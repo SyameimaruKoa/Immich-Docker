@@ -1,0 +1,10 @@
+# 環境変数（認証キーやパスワードを含む実設定ファイル）
+.env
+
+# Tailscale のステート保存ディレクトリ
+tailscale-state/
+
+# データベースおよびメディア保存用ローカルディレクトリ
+postgres/
+library/
+model-cache/

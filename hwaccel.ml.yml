@@ -1,0 +1,57 @@
+# ハードウェアアクセラレーションによる機械学習（画像認識・推論）の設定
+#
+# Unraidなど、複数のComposeファイルをサポートしていないプラットフォームを使用している場合は、
+# このファイル内の対象バックエンドのコンテンツを docker-compose.yml ファイルの immich-machine-learning サービスに
+# コピーしてインライン化できます。
+#
+# 使用方法の詳細についてはガイドを参照してください: https://docs.immich.app/features/ml-hardware-acceleration
+
+services:
+  armnn:
+    devices:
+      - /dev/mali0:/dev/mali0
+    volumes:
+      - /lib/firmware/mali_csffw.bin:/lib/firmware/mali_csffw.bin:ro # チップセット用のMaliファームウェア（ドライバーによっては不要な場合があります）
+      - /usr/lib/libmali.so:/usr/lib/libmali.so:ro # チップセット用のMaliドライバー（必須）
+  
+  rknn:
+    security_opt:
+      - systempaths=unconfined
+      - apparmor=unconfined
+    devices:
+      - /dev/dri:/dev/dri
+
+  cpu: {}
+
+  cuda:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities:
+                - gpu
+
+  rocm:
+    group_add:
+      - video
+    devices:
+      - /dev/dri:/dev/dri
+      - /dev/kfd:/dev/kfd
+
+  openvino:
+    device_cgroup_rules:
+      - 'c 189:* rmw'
+    devices:
+      - /dev/dri:/dev/dri
+    volumes:
+      - /dev/bus/usb:/dev/bus/usb
+
+  openvino-wsl:
+    devices:
+      - /dev/dri:/dev/dri
+      - /dev/dxg:/dev/dxg
+    volumes:
+      - /dev/bus/usb:/dev/bus/usb
+      - /usr/lib/wsl:/usr/lib/wsl
