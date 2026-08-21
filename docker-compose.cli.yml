@@ -1,0 +1,33 @@
+# ==============================================================================
+# Immich CLI アップロード用 Docker Compose 設定ファイル
+# ==============================================================================
+# 【概要】
+# ホストマシン上の指定ディレクトリ内の画像・動画ファイルを Immich サーバーにアップロードします。
+# 既存の Immich サーバーイメージ内に内蔵されている公式 CLI (/usr/src/app/server/bin/immich) を使用するため、
+# 外部からの追加イメージダウンロードは不要です。
+#
+# 【主な使い方】
+# 1. シェルスクリプト (推奨):
+#      ./immich-upload.sh /mnt/NAS/Documents/Pictures/壁紙
+#
+# 2. docker compose コマンドで直接実行:
+#      UPLOAD_DIR="/mnt/NAS/Documents/Pictures/壁紙" docker compose -f docker-compose.cli.yml run --rm immich-cli
+#
+# 3. 引数を個別に指定して実行:
+#      UPLOAD_DIR="/mnt/NAS/Documents/Pictures" docker compose -f docker-compose.cli.yml run --rm immich-cli upload --album --recursive /import/壁紙
+# ==============================================================================
+
+services:
+    immich-cli:
+        image: ghcr.io/immich-app/immich-server:${IMMICH_VERSION:-v3}
+        container_name: immich_upload_cli
+        network_mode: host
+        env_file:
+            - .env
+        environment:
+            - IMMICH_INSTANCE_URL=${IMMICH_INSTANCE_URL:-http://localhost:2283/api}
+            - IMMICH_API_KEY=${IMMICH_API_KEY}
+        volumes:
+            - ${UPLOAD_DIR:-/mnt/NAS/Documents/Pictures}:/import:ro
+        entrypoint: ["/usr/src/app/server/bin/immich"]
+        command: ["upload", "--album", "--recursive", "/import"]
