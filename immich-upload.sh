@@ -230,6 +230,13 @@ echo "再帰探索       : $(if [ "$RECURSIVE" = true ]; then echo "有効"; els
 echo "ドライラン     : $(if [ "$DRY_RUN" = true ]; then echo "有効 (テスト実行)"; else echo "無効 (実際にアップロード)"; fi)"
 echo "========================================================"
 
+# ボリュームモードの設定（削除系オプション使用時は書き込み可能にする）
+if [ "$DELETE_ASSETS" = true ] || [ "$DELETE_DUPLICATES" = true ]; then
+    export VOLUME_MODE="rw"
+else
+    export VOLUME_MODE="ro"
+fi
+
 # Docker Compose の実行
 export UPLOAD_DIR="$ABS_TARGET_DIR"
 cd "$SCRIPT_DIR"
