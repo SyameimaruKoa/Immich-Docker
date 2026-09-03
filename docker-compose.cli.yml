@@ -28,6 +28,6 @@ services:
             - IMMICH_INSTANCE_URL=${IMMICH_INSTANCE_URL:-http://localhost:2283/api}
             - IMMICH_API_KEY=${IMMICH_API_KEY}
         volumes:
-            - ${UPLOAD_DIR:-/mnt/NAS/Documents/Pictures}:/import:${VOLUME_MODE:-ro}
+            - ${UPLOAD_DIR:-/mnt/NAS/Documents/Pictures}:/import:ro
         entrypoint: ["/usr/src/app/server/bin/immich"]
         command: ["upload", "--album", "--recursive", "/import"]
