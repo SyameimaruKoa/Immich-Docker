@@ -32,7 +32,7 @@ show_help() {
     -r, --recursive         サブディレクトリ内も再帰的に探索してアップロード（デフォルトで有効）
     --no-recursive          直下のファイルのみアップロード
     -n, --dry-run           実際にはアップロードせず、対象ファイルの確認のみ実行（テスト用）
-    -d, --delete            アップロード成功後にホスト側の元ファイルを削除
+    -d, --delete            アップロード成功後にホスト側の元ファイルを削除（重複ファイルも含む）
     --delete-duplicates     既にサーバー上に存在する重複ファイルをホスト側から削除
     -k, --key <API_KEY>     Immich API キーを明示的に指定（デフォルトは .env 内の値）
     -u, --url <URL>         Immich API の URL を指定（デフォルト: http://localhost:2283/api）
@@ -211,6 +211,8 @@ fi
 
 if [ "$DELETE_ASSETS" = true ]; then
     CLI_ARGS+=("--delete")
+    # 重複ファイル（既にサーバー上に存在するファイル）も削除する
+    DELETE_DUPLICATES=true
 fi
 
 if [ "$DELETE_DUPLICATES" = true ]; then
@@ -228,6 +230,7 @@ echo "Immich URL     : $IMMICH_INSTANCE_URL"
 echo "アルバム設定   : $(if [ -n "$CUSTOM_ALBUM" ]; then echo "固定アルバム: $CUSTOM_ALBUM"; elif [ "$AUTO_ALBUM" = true ]; then echo "フォルダ名で自動作成"; else echo "なし (タイムラインのみ)"; fi)"
 echo "再帰探索       : $(if [ "$RECURSIVE" = true ]; then echo "有効"; else echo "無効"; fi)"
 echo "ドライラン     : $(if [ "$DRY_RUN" = true ]; then echo "有効 (テスト実行)"; else echo "無効 (実際にアップロード)"; fi)"
+echo "ファイル削除   : $(if [ "$DELETE_ASSETS" = true ]; then echo "有効 (新規・重複ともに削除)"; elif [ "$DELETE_DUPLICATES" = true ]; then echo "重複のみ削除"; else echo "無効"; fi)"
 echo "========================================================"
 
 # ボリュームモードの設定（削除系オプション使用時は書き込み可能にする）
