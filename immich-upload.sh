@@ -27,14 +27,14 @@ show_help() {
 
 オプション:
     -a, --album             各ファイルが入っているフォルダ名のアルバムに追加（既定）
-    --album-with-parent     親フォルダ名_フォルダ名のアルバムに追加
-    --no-album              アルバムに追加せずアップロード
+    -p, --album-with-parent 親フォルダ名_フォルダ名のアルバムに追加
+    -N, --no-album          アルバムに追加せずアップロード
     -A, --album-name <名前> すべてのファイルを指定名のアルバムに追加
     -r, --recursive         サブディレクトリ内も再帰的に探索してアップロード（デフォルトで有効）
-    --no-recursive          直下のファイルのみアップロード
+    -R, --no-recursive      直下のファイルのみアップロード
     -n, --dry-run           実際にはアップロードせず、対象ファイルの確認のみ実行（テスト用）
     -d, --delete            アップロード成功後にホスト側の元ファイルを削除（重複ファイルも含む）
-    --delete-duplicates     既にサーバー上に存在する重複ファイルをホスト側から削除
+    -D, --delete-duplicates 既にサーバー上に存在する重複ファイルをホスト側から削除
     -k, --key <API_KEY>     Immich API キーを明示的に指定（デフォルトは .env 内の値）
     -u, --url <URL>         Immich API の URL を指定（デフォルト: http://localhost:2283/api）
     -h, --help              このヘルプメッセージを表示して終了
@@ -84,7 +84,7 @@ while [ "$#" -gt 0 ]; do
             show_help
             exit 0
             ;;
-        -a|--album|--album-with-parent|--no-album)
+        -a|--album|-p|--album-with-parent|-N|--no-album)
             if [ "$ALBUM_MODE_SPECIFIED" = true ]; then
                 echo "エラー: アルバムモードは1つだけ指定してください。" >&2
                 exit 1
@@ -92,8 +92,8 @@ while [ "$#" -gt 0 ]; do
             ALBUM_MODE_SPECIFIED=true
             case "$1" in
                 -a|--album) ALBUM_MODE="folder" ;;
-                --album-with-parent) ALBUM_MODE="parent" ;;
-                --no-album) ALBUM_MODE="none" ;;
+                -p|--album-with-parent) ALBUM_MODE="parent" ;;
+                -N|--no-album) ALBUM_MODE="none" ;;
             esac
             shift
             ;;
@@ -116,7 +116,7 @@ while [ "$#" -gt 0 ]; do
             RECURSIVE=true
             shift
             ;;
-        --no-recursive)
+        -R|--no-recursive)
             RECURSIVE=false
             shift
             ;;
@@ -128,7 +128,7 @@ while [ "$#" -gt 0 ]; do
             DELETE_ASSETS=true
             shift
             ;;
-        --delete-duplicates)
+        -D|--delete-duplicates)
             DELETE_DUPLICATES=true
             shift
             ;;
