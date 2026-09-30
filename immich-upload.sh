@@ -261,6 +261,9 @@ else
     export VOLUME_MODE="ro"
 fi
 
+# Ctrl+C で現在の CLI 実行後に次のフォルダへ進まない。
+trap 'echo >&2; echo "中断しました。" >&2; exit 130' INT
+
 # Docker Compose の実行
 export UPLOAD_DIR="$ABS_TARGET_DIR"
 cd "$SCRIPT_DIR"
