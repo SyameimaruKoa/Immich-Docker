@@ -8,3 +8,7 @@ tailscale-state/
 postgres/
 library/
 model-cache/
+
+# Python 検証時のキャッシュ
+__pycache__/
+*.pyc
