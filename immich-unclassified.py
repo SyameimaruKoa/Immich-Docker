@@ -33,6 +33,8 @@ class Client:
                           headers={'x-api-key': self.key, 'Content-Type': 'application/json'})
         try:
             with self.opener.open(request, timeout=60) as response:
+                if getattr(response, 'status', None) == 204:
+                    return None
                 return json.load(response)
         except HTTPError as error:
             raise RuntimeError(f'{method} {path}: HTTP {error.code}') from None

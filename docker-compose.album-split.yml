@@ -1,0 +1,15 @@
+services:
+  immich-album-split:
+    image: python:3.13-alpine
+    network_mode: host
+    env_file:
+      - .env
+    environment:
+      PYTHONDONTWRITEBYTECODE: '1'
+    volumes:
+      - ./immich-album-split.py:/app/immich-album-split.py:ro
+      - ./immich-unclassified.py:/app/immich-unclassified.py:ro
+      - album-split-locks:/tmp
+    entrypoint: [python3, /app/immich-album-split.py]
+volumes:
+  album-split-locks:
