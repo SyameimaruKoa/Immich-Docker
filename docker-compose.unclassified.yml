@@ -6,10 +6,10 @@ services:
     env_file:
       - .env
     environment:
-      IMMICH_INSTANCE_URL: ${IMMICH_INSTANCE_URL:-http://localhost:2283/api}
       IMMICH_UNCLASSIFIED_INCLUDE_ARCHIVED: ${IMMICH_UNCLASSIFIED_INCLUDE_ARCHIVED:-false}
       PYTHONDONTWRITEBYTECODE: '1'
     volumes:
       - ./immich-unclassified.py:/app/immich-unclassified.py:ro
-    command: [python3, /app/immich-unclassified.py, --interval, '86400']
+    entrypoint: [python3, /app/immich-unclassified.py]
+    command: [--interval, '86400']
     restart: unless-stopped

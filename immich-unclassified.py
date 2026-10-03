@@ -7,12 +7,13 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import shlex
 import sys
 import time
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlsplit
-from urllib.request import Request, build_opener, HTTPRedirectHandler
+from urllib.request import Request, build_opener, HTTPRedirectHandler, ProxyHandler
+
+
+LOCAL_API_URL = 'http://127.0.0.1:2283/api'
 
 
 class NoRedirect(HTTPRedirectHandler):
@@ -24,7 +25,7 @@ class Client:
     def __init__(self, url, key):
         self.url = url.rstrip('/')
         self.key = key
-        self.opener = build_opener(NoRedirect())
+        self.opener = build_opener(ProxyHandler({}), NoRedirect())
 
     def request(self, method, path, body=None):
         data = None if body is None else json.dumps(body).encode()
@@ -113,41 +114,18 @@ def sync(client, album_name, include_archived=False, dry_run=False):
     client.change('PUT', target['id'], additions)
 
 
-def load_env(path):
-    if not path.exists():
-        return
-    for line in path.read_text().splitlines():
-        line = line.strip()
-        if not line or line.startswith('#'):
-            continue
-        if line.startswith('export '):
-            line = line[7:]
-        name, separator, raw = line.partition('=')
-        if separator:
-            values = shlex.split(raw, comments=True)
-            os.environ.setdefault(name.strip(), ' '.join(values))
-
-
 def main():
     parser = argparse.ArgumentParser(description='未分類の画像・動画を専用アルバムに同期 (Immich v3)')
-    parser.add_argument('--env-file', type=Path, default=Path(__file__).with_name('.env'))
-    parser.add_argument('--url', help='Immich API URL (末尾 /api)')
     parser.add_argument('--album-name', default='未分類')
     parser.add_argument('--include-archived', action='store_true', help='アーカイブも含める')
     parser.add_argument('--dry-run', action='store_true', help='変更せず件数を表示')
     parser.add_argument('--interval', type=int, default=0, help='定期実行間隔 (秒)。0 は1回だけ')
     args = parser.parse_args()
     try:
-        load_env(args.env_file)
-        url = args.url or os.environ.get('IMMICH_INSTANCE_URL', 'http://localhost:2283/api')
+        url = LOCAL_API_URL
         key = os.environ.get('IMMICH_API_KEY', '')
         if not key or key == 'your_api_key_here':
             raise RuntimeError('IMMICH_API_KEY を設定してください')
-        parsed = urlsplit(url)
-        if (parsed.scheme not in {'http', 'https'} or not parsed.netloc
-                or parsed.username or parsed.password or parsed.query or parsed.fragment
-                or parsed.path.rstrip('/') != '/api'):
-            raise RuntimeError('URL は http(s)://ホスト[:ポート]/api を指定してください')
         if args.interval < 0 or not args.album_name.strip():
             raise RuntimeError('間隔は0以上、アルバム名は空白以外を指定してください')
         archived_setting = os.environ.get('IMMICH_UNCLASSIFIED_INCLUDE_ARCHIVED', 'false').lower()

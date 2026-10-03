@@ -11,24 +11,23 @@ Immich v3 の API で、APIキー所有ユーザーの画像・動画のうち�
 `.env` の `IMMICH_API_KEY` に対象ユーザーの APIキーを設定します。必要な権限は `user.read`, `asset.read`, `album.read`, `album.create`, `albumAsset.create`, `albumAsset.delete` です。APIキーや `.env` をコミットしないでください。
 
 ```dotenv
-IMMICH_INSTANCE_URL=http://localhost:2283/api
 IMMICH_UNCLASSIFIED_INCLUDE_ARCHIVED=false
 ```
 
-`true` にするとアーカイブを含めます。環境変数は `.env` より優先されます。専用アルバムは自動作成されます。同名の所有アルバムが既にあれば再利用します。同名の所有アルバムが複数ある場合、または専用アルバムが共有されている場合はエラーで停止します。
+`true` にするとアーカイブを含めます。接続先はこのホストの `http://127.0.0.1:2283/api` に固定しています。`IMMICH_INSTANCE_URL` やプロキシの設定は使いません。専用アルバムは自動作成されます。同名の所有アルバムが既にあれば再利用します。同名の所有アルバムが複数ある場合、または専用アルバムが共有されている場合はエラーで停止します。
 
 ## 手動実行・事前確認
 
-ホストの Python 3 (追加パッケージ不要) で実行できます。
+既存の `immich-upload.sh` と同様に、シェルスクリプトから Docker Compose 経由で実行します。ホストへの Python のインストールは不要です。初回は Python コンテナを取得します。どのディレクトリから呼び出しても、スクリプトと同じ場所の `.env` と Compose ファイルを使います。
 
 ```bash
-python3 immich-unclassified.py --dry-run
-python3 immich-unclassified.py
-python3 immich-unclassified.py --include-archived
-python3 immich-unclassified.py --album-name 未整理 --url http://localhost:2283/api
+./immich-unclassified.sh --dry-run
+./immich-unclassified.sh
+./immich-unclassified.sh --include-archived
+./immich-unclassified.sh --album-name 未整理
 ```
 
-`--dry-run` は読み取りのみで、追加・除外予定件数を表示します。`--env-file` で別の設定ファイルも指定できます。対象アルバム名は一度決めたら固定してください。変更すると以前の専用アルバムも通常の分類済みアルバムとして扱われます。
+通常の実行は1回の同期後に終了します。`--dry-run` は読み取りのみで、追加・除外予定件数を表示します。対象アルバム名は一度決めたら固定してください。変更すると以前の専用アルバムも通常の分類済みアルバムとして扱われます。
 
 ## 毎日自動実行
 
@@ -45,7 +44,7 @@ Python コンテナを取得し、起動時に1回、その後86400秒間隔で�
 docker compose -f docker-compose.unclassified.yml down
 ```
 
-ホストからの定期実行には `--interval 86400` も利用できます。同じ実行環境では同じURL・APIキーでの並行実行を防止します。別コンテナやホストのジョブを重複起動しないでください。
+`./immich-unclassified.sh --interval 86400` でもフォアグラウンドで定期実行できます。同じコンテナ内では同じAPIキーでの並行実行を防止します。手動実行コンテナと定期サービスはロックを共有しないため、重複起動しないでください。
 
 すべての検索ページを読み終えてから、専用アルバムの差分だけを500件単位で更新します。読み取りに失敗した場合は変更しません。更新途中の失敗は次回同期で再計算します。実行中のユーザー操作とはトランザクションを共有できないため、実行中に分類・アーカイブなどを変更したものは次回同期で整合します。
 

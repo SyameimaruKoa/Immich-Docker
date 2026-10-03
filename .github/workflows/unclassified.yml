@@ -11,5 +11,6 @@ jobs:
         with:
           python-version: '3.13'
       - run: python3 -m unittest discover -s tests -v
+      - run: bash -n immich-unclassified.sh
       - run: cp .env.example .env
       - run: docker compose -f docker-compose.unclassified.yml config --quiet

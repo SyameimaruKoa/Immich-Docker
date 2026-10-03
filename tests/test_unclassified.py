@@ -4,6 +4,10 @@ import unittest
 from unittest.mock import patch
 import io
 import json
+import os
+import subprocess
+import tempfile
+import shutil
 
 spec = importlib.util.spec_from_file_location(
     'unclassified', Path(__file__).resolve().parents[1] / 'immich-unclassified.py')
@@ -157,13 +161,80 @@ class SyncTests(unittest.TestCase):
                 patch.dict(module.os.environ, {'IMMICH_API_KEY': 'test',
                            'IMMICH_INSTANCE_URL': 'http://localhost:2283/api',
                            'IMMICH_UNCLASSIFIED_INCLUDE_ARCHIVED': 'false'}), \
-                patch.object(module, 'load_env'), \
                 patch.object(module, 'sync', side_effect=[RuntimeError('offline'), None]) as sync, \
                 patch.object(module.time, 'sleep', side_effect=[None, KeyboardInterrupt]) as sleep:
             with self.assertRaises(KeyboardInterrupt):
                 module.main()
             self.assertEqual(sync.call_count, 2)
             self.assertEqual(sleep.call_args_list[0].args, (86400,))
+
+    def test_remote_environment_cannot_change_destination(self):
+        with patch.object(module.sys, 'argv', ['worker', '--dry-run']), \
+                patch.dict(module.os.environ, {'IMMICH_API_KEY': 'test',
+                           'IMMICH_INSTANCE_URL': 'https://remote.invalid/api',
+                           'IMMICH_UNCLASSIFIED_INCLUDE_ARCHIVED': 'false'}), \
+                patch.object(module, 'Client') as client, \
+                patch.object(module, 'sync'):
+            self.assertEqual(module.main(), 0)
+            client.assert_called_once_with('http://127.0.0.1:2283/api', 'test')
+
+
+class ShellTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix='immich shell ')
+        self.root = Path(self.temp.name)
+        self.addCleanup(self.temp.cleanup)
+        self.script = self.root / 'immich-unclassified.sh'
+        shutil.copyfile(Path(__file__).resolve().parents[1] / self.script.name, self.script)
+        self.script.chmod(0o755)
+        (self.root / '.env').write_text('IMMICH_API_KEY=test\n')
+        self.log = self.root / 'docker-args.json'
+        docker = self.root / 'docker'
+        docker.write_text('#!/usr/bin/env python3\nimport os, sys, json\n'
+                          'with open(os.environ["TEST_DOCKER_LOG"], "w") as f:\n'
+                          ' json.dump({"cwd": os.getcwd(), "args": sys.argv[1:]}, f)\n'
+                          'sys.exit(int(os.environ.get("TEST_DOCKER_EXIT", "0")))\n')
+        docker.chmod(0o755)
+        self.env = {**os.environ, 'PATH': str(self.root) + os.pathsep + os.environ['PATH'],
+                    'TEST_DOCKER_LOG': str(self.log)}
+
+    def run_script(self, *args):
+        return subprocess.run([str(self.script), *args], cwd='/tmp', env=self.env,
+                              capture_output=True, text=True)
+
+    def test_local_compose_and_quoted_arguments_from_another_directory(self):
+        result = self.run_script('-n', '-A', '未分類 写真', '--include-archived')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        call = json.loads(self.log.read_text())
+        self.assertEqual(call['cwd'], str(self.root))
+        self.assertEqual(call['args'], ['compose', '-f',
+            str(self.root / 'docker-compose.unclassified.yml'), 'run', '--rm', '-T',
+            'immich-unclassified', '--interval', '0', '--dry-run', '--album-name', '未分類 写真',
+            '--include-archived'])
+
+    def test_default_runs_once_without_service_interval(self):
+        self.assertEqual(self.run_script().returncode, 0)
+        self.assertEqual(json.loads(self.log.read_text())['args'][-3:],
+                         ['immich-unclassified', '--interval', '0'])
+
+    def test_remote_and_invalid_options_do_not_start_docker(self):
+        for args in [('--url', 'https://remote.invalid/api'), ('--interval', '-1'),
+                     ('--interval', 'abc'), ('--album-name',)]:
+            self.assertNotEqual(self.run_script(*args).returncode, 0)
+        self.assertFalse(self.log.exists())
+
+    def test_help_does_not_start_docker(self):
+        self.assertEqual(self.run_script('--help').returncode, 0)
+        self.assertFalse(self.log.exists())
+
+    def test_docker_exit_status_is_preserved(self):
+        self.env['TEST_DOCKER_EXIT'] = '7'
+        self.assertEqual(self.run_script().returncode, 7)
+
+    def test_missing_env_does_not_start_docker(self):
+        (self.root / '.env').unlink()
+        self.assertNotEqual(self.run_script().returncode, 0)
+        self.assertFalse(self.log.exists())
 
 
 if __name__ == '__main__':
